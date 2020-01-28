@@ -117,28 +117,36 @@ class CollectionTimeFilterMinutes
     {
         $first = $this->collection->first();
 
+        $index = false;
+
         //collection has been emptied
         if($first === null) {
-            return false;
+            return $index;
         }
-
-        $minutesEitherSide = $this->requiredIntervalInMinutes / 2;
 
         //check in the first item in the collection exceeds the current time by too much
         //i.e. should be skipped
-        if($first->getTime()->gt((clone $time)->addMinutes($minutesEitherSide))) {
-            return false;
+        if($first->getTime()->gt((clone $time)->addMinutes($this->requiredIntervalInMinutes / 2))) {
+            return $index;
         }
 
-        //otherwise search the remaining collection for the first item that
-        //lies within half of the required interval either side
-        return $this->collection->search(function(HasTime $item) use ($time, $minutesEitherSide) {
-            $future = (clone $time)->addMinutes($minutesEitherSide);
+        for($i = 1; $i <= 3; $i++) {
+            //otherwise search the remaining collection for the first item that
+            //lies an increasingly larger interval
+            $index = $this->collection->search(function(HasTime $item) use ($time, $i) {
+                $future = (clone $time)->addMinutes($this->existingIntervalInMinutes * $i);
 
-            $past = (clone $time)->subMinutes($minutesEitherSide);
+                $past = (clone $time)->subMinutes($this->existingIntervalInMinutes * $i);
 
-            return $item->getTime()->between($past, $future);
-        });
+                return $item->getTime()->between($past, $future);
+            });
+
+            if($index !== false) {
+                return $index;
+            }
+        }
+
+        return $index;
     }
 
     /**
@@ -269,6 +277,11 @@ class CollectionTimeFilterMinutes
         //check which of the 2 is closer to the actual time
         $firstDiff = $first->getTime()->diffInSeconds($expectedTime);
         $secondDiff = $second->getTime()->diffInSeconds($expectedTime);
+
+        //if the values are identical (rare)
+        if($firstDiff === $secondDiff) {
+            return $secondIndex > $firstIndex ? $secondIndex : $firstIndex;
+        }
 
         $firstIsCloser = $secondDiff > $firstDiff;
         return $firstIsCloser ? $firstIndex : $secondIndex;

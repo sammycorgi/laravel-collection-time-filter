@@ -130,23 +130,23 @@ class CollectionTimeFilterMinutes
             return $index;
         }
 
-        for($i = 1; $i <= 3; $i++) {
-            //otherwise search the remaining collection for the first item that
-            //lies an increasingly larger interval
-            $index = $this->collection->search(function(HasTime $item) use ($time, $i) {
-                $future = (clone $time)->addMinutes($this->existingIntervalInMinutes * $i);
+        $requiredDifferenceMs = $this->requiredIntervalInMinutes / 2 * 60 * 1000;
 
-                $past = (clone $time)->subMinutes($this->existingIntervalInMinutes * $i);
+        foreach($this->collection as $index => $item) {
+            //if left side is in the future, diffinms is negative
+            $diff = $item->getTime()->diffinMilliseconds($time, false);
 
-                return $item->getTime()->between($past, $future);
-            });
-
-            if($index !== false) {
+            if(abs($diff) <= $requiredDifferenceMs) {
                 return $index;
+            }
+
+            //if it is too far in the future do not continue searching
+            if($diff < $requiredDifferenceMs * -1) {
+                return false;
             }
         }
 
-        return $index;
+        return false;
     }
 
     /**

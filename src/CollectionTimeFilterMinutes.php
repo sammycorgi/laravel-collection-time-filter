@@ -8,9 +8,9 @@ use LaravelCollectionTimeFilter\Contracts\HasTime;
 
 class CollectionTimeFilterMinutes
 {
-    private const MINUTES_PER_DAY = 1440;
-    private const MINUTES_PER_HOUR = 60;
-    private const HOURS_PER_DAY = 24;
+    public const MINUTES_PER_DAY = 1440;
+    public const MINUTES_PER_HOUR = 60;
+    public const HOURS_PER_DAY = 24;
 
     /**
      * @var Collection

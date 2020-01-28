@@ -11,6 +11,8 @@ Currently can filter down a collection from 24 hours worth of points to any requ
 
 Pass a collection of `LaravelCollectionTimeFilter\HasTime` objects to a new instance of a `LaravelCollectionTimeFilter\CollectionTimeFilterMinutes`, along with the required interval in minutes and the existing interval. The existing interval isn't too important it just ensures that the required interval is larger.
 
+Please note, the input collection **must** be sorted by time ascending.
+
 Call `getFilteredCollection()` on this object to filter down the results to the required interval.
 
 This will find the closest value to the given interval, starting at 00:00 and ending at 00:00 the following day minus your required interval, for a total of `24 * intervalsPerHour` intervals.

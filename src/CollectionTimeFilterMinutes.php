@@ -130,19 +130,23 @@ class CollectionTimeFilterMinutes
             return $index;
         }
 
-        $requiredDifferenceMs = $this->requiredIntervalInMinutes / 2 * 60 * 1000;
+        //search for the closest value, starting at the existing interval and increasing by the interval up to 3 times
+        for($i = 1; $i <= 3; $i++) {
+            $requiredDifferenceMs = $this->existingIntervalInMinutes * $i * 60 * 1000;
 
-        foreach($this->collection as $index => $item) {
-            //if left side is in the future, diffinms is negative
-            $diff = $item->getTime()->diffinMilliseconds($time, false);
+            foreach($this->collection as $index => $item) {
+                //if left side is in the future, diffinms is negative
+                $diff = $item->getTime()->diffinMilliseconds($time, false);
 
-            if(abs($diff) <= $requiredDifferenceMs) {
-                return $index;
-            }
+                //if the time is within the bounds return the index
+                if(abs($diff) <= $requiredDifferenceMs) {
+                    return $index;
+                }
 
-            //if it is too far in the future do not continue searching
-            if($diff < $requiredDifferenceMs * -1) {
-                return false;
+                //if it is too far in the future do not continue searching
+                if($diff < $requiredDifferenceMs * -1) {
+                    break;
+                }
             }
         }
 

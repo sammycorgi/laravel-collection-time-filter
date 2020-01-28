@@ -191,7 +191,7 @@ class CollectionTimeFilterMinutes
             //key is false if none is found, otherwise is int
             if($key === false) {
                 if($this->shouldWriteNullValues) {
-                    $found = new DateWrapper(clone $currentTime);
+                    $found = $this->getWriteNullValuesObject(clone $currentTime);
                 }
             } else {
                 $foundIndex = $this->findIndexOfPointWithImprovedAccuracy($currentTime, $key);
@@ -268,5 +268,16 @@ class CollectionTimeFilterMinutes
 
         $firstIsCloser = $secondDiff > $firstDiff;
         return $firstIsCloser ? $firstIndex : $secondIndex;
+    }
+
+    /**
+     * Get the value to add to the array if no suitable item was found
+     *
+     * @param Carbon $time
+     * @return HasTime
+     */
+    protected function getWriteNullValuesObject(Carbon $time) : HasTime
+    {
+        return new DateWrapper($time);
     }
 }

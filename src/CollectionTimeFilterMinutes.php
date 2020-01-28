@@ -260,6 +260,10 @@ class CollectionTimeFilterMinutes
             $secondIndex = $firstIndex + 1;
         }
 
+        if(!isset($this->collection[$secondIndex])) {
+            return $firstIndex;
+        }
+
         $second = $this->collection[$secondIndex];
 
         //check which of the 2 is closer to the actual time

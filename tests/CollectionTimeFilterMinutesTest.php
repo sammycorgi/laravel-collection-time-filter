@@ -127,4 +127,24 @@ class CollectionTimeFilterMinutesTest extends TestCase
             $this->assertTrue($time->getTime()->eq(Carbon::now()->startOfDay()->addMinutes($requiredInterval * $index)));
         });
     }
+
+    public function test_if_the_interval_is_1440_the_collection_will_return_the_first_item()
+    {
+        $interval = 1440;
+
+        $first = new DateWrapper(Carbon::now()->setTime(23, 30, 0));
+
+        $collection = new Collection([
+            $first,
+            new DateWrapper((clone $first->getTime())->addMinute()),
+            new DateWrapper((clone $first->getTime())->addMinutes(2)),
+        ]);
+
+        $filter = $this->getFilter($collection, $interval, 5, true);
+
+        $filtered = $filter->getFilteredCollection();
+
+        $this->assertCount(1, $filtered);
+        $this->assertSame($first, $filtered->first());
+    }
 }

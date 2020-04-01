@@ -91,7 +91,7 @@ class CollectionTimeFilterMinutes
      */
     protected function determineClosestInterval(): int
     {
-        $divisors = [5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 30, 32, 36, 40, 45, 48, 60, 72, 80, 90, 96, 120, 144, 160, 180, 240, 288, 360, 480, 720];
+        $divisors = [5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 30, 32, 36, 40, 45, 48, 60, 72, 80, 90, 96, 120, 144, 160, 180, 240, 288, 360, 480, 720, 1440];
 
         $closest = null;
 
@@ -185,6 +185,13 @@ class CollectionTimeFilterMinutes
         //determine the closest workable interval from the interval specified if the specified interval is unworkable
         if (static::MINUTES_PER_DAY % $this->requiredIntervalInMinutes) {
             $this->requiredIntervalInMinutes = $this->determineClosestInterval();
+        }
+
+        //if only need 1 item, grab the first item and finish processing
+        if($this->requiredIntervalInMinutes === static::MINUTES_PER_DAY) {
+            $this->filtered->push($this->collection->first());
+
+            return;
         }
 
         /** @var HasTime $firstItem */

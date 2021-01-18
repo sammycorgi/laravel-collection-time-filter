@@ -61,7 +61,7 @@ class CollectionTimeFilterMinutesTest extends TestCase
 
         //remove the last half-interval as these would never be processed
         //e.g. 23:45 is ok as it is only 15 mins away from 23:30 but 23:50 is not
-        $maxIntervals = ((60 * 24) / 5) - (($requiredInterval / 2) / $existingInterval);
+        $maxIntervals = (60 * 24) / 5;
 
         for ($i = 0; $i < $maxIntervals; $i++) {
             $minutes = $existingInterval * $i;
@@ -72,43 +72,16 @@ class CollectionTimeFilterMinutesTest extends TestCase
 
             $filter = $this->getFilter($collection, $requiredInterval, $existingInterval);
 
-            $filtered = $filter->getFilteredCollection();
+            $filtered = $filter->getFilteredCollection()->filter();
 
-            $noNullValues = $filtered->filter();
-
-            $this->assertCount(1, $noNullValues);
+            $this->assertCount(1, $filtered);
 
             //assert that the set value is stored in the right place in the array
-            $time = $noNullValues->first()->getTime();
-            $hour = $time->hour;
-            $minute = $time->minute;
+            /* @var Carbon $time */
+            $time = $filtered->first()->getTime();
 
-            $shift = 0;
-
-            if ($minute > $requiredInterval / 2) {
-                $shift = 1;
-            }
-
-            if ($minute > 60 - $requiredInterval / 2) {
-                $shift = 2;
-            }
-
-            $this->assertEquals($hour * 2 + $shift, $noNullValues->keys()->first());
+            $this->assertEquals(floor($time->diffInMinutes($time->clone()->startOfDay()) / $requiredInterval), $filtered->keys()->first());
         }
-    }
-
-    public function test_the_value_closest_to_the_interval_will_be_selected_if_other_valid_values_are_present()
-    {
-        $expected = new DateWrapper(Carbon::now()->setTime(1, 30));
-
-        $times = new Collection([new DateWrapper(Carbon::now()->setTime(1, 20)), new DateWrapper(Carbon::now()->setTime(1, 25)),
-            $expected, new DateWrapper(Carbon::now()->setTime(1, 35)), new DateWrapper(Carbon::now()->setTime(1, 40))]);
-
-        $filter = $this->getFilter($times, 30, 5);
-
-        $filtered = $filter->getFilteredCollection();
-
-        $this->assertTrue($filtered->filter()->first()->getTime()->eq($expected->getTime()));
     }
 
     public function test_dates_can_be_written_if_there_is_no_acceptable_value_for_a_given_interval()
@@ -146,5 +119,21 @@ class CollectionTimeFilterMinutesTest extends TestCase
 
         $this->assertCount(1, $filtered);
         $this->assertSame($first, $filtered->first());
+    }
+
+    public function test_the_filter_will_filter_records_correctly()
+    {
+        $collection = new Collection([
+            new DateWrapper(Carbon::now()->setTime(0, 2, 28)),
+            new DateWrapper(Carbon::now()->setTime(0, 7, 28)),
+            new DateWrapper(Carbon::now()->setTime(0, 12, 28)),
+            new DateWrapper(Carbon::now()->setTime(0, 17, 28)),
+            new DateWrapper(Carbon::now()->setTime(0, 22, 28))
+        ]);
+
+        $filter = $this->getFilter($collection, 5, 5, false);
+        $filtered = $filter->getFilteredCollection()->filter();
+
+        $this->assertCount(5, $filtered);
     }
 }

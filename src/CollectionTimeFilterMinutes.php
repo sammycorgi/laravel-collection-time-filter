@@ -105,48 +105,39 @@ class CollectionTimeFilterMinutes
     }
 
     /**
-     * Find the first item in the collection that is x minutes away from a given time
-     * Where x is the current interval
+     * Find the item in the collection that is closest to a given time
      *
-     * Returns false if no item is found
-     *
-     * @param Carbon $time
+     * @param Carbon $currentTime
+     * @param Carbon $nextTime
      * @return int | false
      */
-    protected function findFirstItemThatIsWithinIntervalOfTime(Carbon $time)
+    protected function findFirstItemThatIsWithinIntervalOfTime(Carbon $currentTime, Carbon $nextTime)
     {
+        /* @var DateWrapper $first */
         $first = $this->collection->first();
 
-        $index = false;
+        $c = $currentTime->clone();
+        $n = $nextTime->clone();
 
         //collection has been emptied
         if($first === null) {
-            return $index;
+            return false;
         }
 
         //check in the first item in the collection exceeds the current time by too much
         //i.e. should be skipped
-        if($first->getTime()->gt((clone $time)->addMinutes($this->requiredIntervalInMinutes / 2))) {
-            return $index;
+        if($first->getTime()->gte($n)) {
+            return false;
         }
 
-        //search for the closest value, starting at the existing interval and increasing by the interval up to 3 times
-        for($i = 1; $i <= 3; $i++) {
-            $requiredDifferenceMs = $this->existingIntervalInMinutes * $i * 60 * 1000;
+        /* @var DateWrapper $item */
+        foreach($this->collection as $key => $item) {
+            if($item->getTime()->betweenIncluded($c, $n)) {
+                return $key;
+            }
 
-            foreach($this->collection as $index => $item) {
-                //if left side is in the future, diffinms is negative
-                $diff = $item->getTime()->diffinMilliseconds($time, false);
-
-                //if the time is within the bounds return the index
-                if(abs($diff) <= $requiredDifferenceMs) {
-                    return $index;
-                }
-
-                //if it is too far in the future do not continue searching
-                if($diff < $requiredDifferenceMs * -1) {
-                    break;
-                }
+            if($item->getTime()->gte($n)) {
+                return false;
             }
         }
 
@@ -196,35 +187,26 @@ class CollectionTimeFilterMinutes
 
         /** @var HasTime $firstItem */
         $firstItem = $this->collection->first();
-        $firstTime = clone $firstItem->getTime();
 
-        $currentTime = (clone $firstTime)->startOfDay();
+        //midnight of first time
+        $currentTime = $firstItem->getTime()->clone()->startOfDay();
 
         $maxIntervals = static::HOURS_PER_DAY * (static::MINUTES_PER_HOUR / $this->requiredIntervalInMinutes);
 
         for($intervals = 0; $intervals < $maxIntervals; $intervals++) {
-            $key = $this->findFirstItemThatIsWithinIntervalOfTime($currentTime);
+            $key = $this->findFirstItemThatIsWithinIntervalOfTime($currentTime, $currentTime->clone()->addMinutes($this->requiredIntervalInMinutes));
 
             $found = null;
 
             //key is false if none is found, otherwise is int
             if($key === false) {
                 if($this->shouldWriteNullValues) {
-                    $found = $this->getWriteNullValuesObject(clone $currentTime);
+                    $found = $this->getWriteNullValuesObject($currentTime->clone());
                 }
             } else {
-                $foundIndex = $this->findIndexOfPointWithImprovedAccuracy($currentTime, $key);
+                $found = $this->collection[$key];
 
-                //keep searching the array to see if there is a closer time to the one previously found
-                while($key !== $foundIndex) {
-                    $key = $foundIndex;
-
-                    $foundIndex = $this->findIndexOfPointWithImprovedAccuracy($currentTime, $key);
-                }
-
-                $found = $this->collection[$foundIndex];
-
-                $this->forgetKeys($foundIndex);
+                $this->forgetKeys($key);
             }
 
             $this->filtered->push($found);
@@ -245,57 +227,6 @@ class CollectionTimeFilterMinutes
     protected function forgetKeys(int $max) : void
     {
         $this->collection = $this->collection->forget(range(0, $max))->values();
-    }
-
-    /**
-     * Checks if there is a closer point to be found than the one previously found
-     *
-     * @param Carbon $expectedTime
-     * @param int $firstIndex
-     * @return int
-     */
-    protected function findIndexOfPointWithImprovedAccuracy(Carbon $expectedTime, int $firstIndex) : int
-    {
-        $first = $this->collection[$firstIndex];
-
-        //if this is the only item in the collection return it
-        if($this->collection->count() === 1) {
-            return 0;
-        }
-
-        $isInFuture = $first->getTime()->gt($expectedTime);
-
-        //if the item in the collection is after the expected time
-        if($isInFuture) {
-            //if the item is the first in the collection return it
-            if($firstIndex === 0) {
-                return 0;
-            }
-
-            //check to see if the previous item in the collection is closer
-            $secondIndex = $firstIndex - 1;
-        } else {
-            //otherwise check the next item
-            $secondIndex = $firstIndex + 1;
-        }
-
-        if(!isset($this->collection[$secondIndex])) {
-            return $firstIndex;
-        }
-
-        $second = $this->collection[$secondIndex];
-
-        //check which of the 2 is closer to the actual time
-        $firstDiff = $first->getTime()->diffInSeconds($expectedTime);
-        $secondDiff = $second->getTime()->diffInSeconds($expectedTime);
-
-        //if the values are identical (rare)
-        if($firstDiff === $secondDiff) {
-            return $secondIndex > $firstIndex ? $secondIndex : $firstIndex;
-        }
-
-        $firstIsCloser = $secondDiff > $firstDiff;
-        return $firstIsCloser ? $firstIndex : $secondIndex;
     }
 
     /**
